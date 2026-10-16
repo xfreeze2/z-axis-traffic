@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#1c222c">
+<title>Z-Axis Traffic</title>
+<meta name="description" content="Traffic is a bit heavy in the Z-axis today. A 3D flying-Tesla dodge game in the FSD visualization style.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%9A%80%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+"three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="screen">
+  <div id="view">
+    <div id="hud">
+      <div id="topbar">
+        <div id="prnd"><span data-g="P">P</span><span data-g="R">R</span><span data-g="N">N</span><span data-g="D">D</span><span data-g="Z" class="zg">Z</span>
+          <svg class="wheel" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/><path d="M3 11h6.5M14.5 11H21M12 14.5V21" stroke="currentColor" stroke-width="2"/></svg>
+        </div>
+        <div id="scorebox"><div id="score">0</div><div id="mult"></div></div>
+      </div>
+      <div class="rule"></div>
+      <div id="left">
+        <div class="icon" id="hold"><svg viewBox="0 0 48 40"><path d="M9 6a18 18 0 0 0 0 28M39 6a18 18 0 0 1 0 28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="20" r="12.5" fill="none" stroke="currentColor" stroke-width="3"/><path d="M19.5 13.5v13M28.5 13.5v13M19.5 20h9" stroke="currentColor" stroke-width="3"/></svg><span>HOLD</span></div>
+        <div class="icon" id="autoA"><svg viewBox="0 0 48 32"><path d="M4 7h14M4 13h14M4 19h14M4 25h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M24 4c12 0 20 5 20 12s-8 12-20 12z" fill="none" stroke="currentColor" stroke-width="2.6"/><text x="30" y="21" font-size="13" font-weight="700" fill="currentColor" font-family="Arial">A</text></svg></div>
+        <div id="gaswrap"><div id="gasbar"><div id="gas"></div></div><span>COLD<br>GAS</span></div>
+      </div>
+      <div id="speedcluster">
+        <div id="speedbox"><div id="spd">0</div><div id="spdlbl">MPH</div></div>
+        <div id="limit"><small>SPEED<br>LIMIT</small><b id="limitv">35</b></div>
+      </div>
+    </div>
+    <div id="pops"></div>
+    <div id="ticket"></div>
+    <div id="touch">
+      <div id="stick"><div id="knob"></div></div>
+      <div id="btns">
+        <button id="bRoll" class="tb small">ROLL</button>
+        <button id="bFlip" class="tb small">FLIP</button>
+        <button id="bBoost" class="tb">BOOST</button>
+        <button id="bThrust" class="tb big">THRUST</button>
+      </div>
+    </div>
+    <div id="title" class="overlay show">
+      <div class="card">
+        <div class="kicker">FULL SELF-FLYING (SUPERVISED)</div>
+        <h1>Z-AXIS<br><span>TRAFFIC</span></h1>
+        <p class="tag">“Traffic is a bit heavy in the Z-axis today.”</p>
+        <div class="start">TAP TO START</div>
+        <div class="keys" id="keysHelp">WASD / ARROWS drive · SPACE thrust · SHIFT boost · Q/E barrel roll · F kickflip</div>
+        <div class="best" id="bestT"></div>
+      </div>
+    </div>
+    <div id="over" class="overlay">
+      <div class="card">
+        <div class="kicker red" id="cause">COLLISION DETECTED</div>
+        <div class="olabel">SCORE</div>
+        <div id="finalScore">0</div>
+        <div class="best" id="bestO"></div>
+        <div id="stats"></div>
+        <div class="row">
+          <button id="share" class="pill">SHARE</button>
+          <a id="post" class="pill" target="_blank" rel="noopener">POST ON X</a>
+          <button id="again" class="pill primary">DRIVE AGAIN</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="map">
+    <canvas id="mini"></canvas>
+    <div id="search"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6.5" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M15 15l6 6" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/></svg></div>
+    <div id="alt">ALT 0 m</div>
+  </div>
+</div>
+<script type="module" src="main.js"></script>
+</body>
+</html>
