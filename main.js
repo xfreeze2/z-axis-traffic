@@ -352,7 +352,22 @@ function showOver() {
   $('over').classList.add('show'); $('touch').classList.remove('on');
 }
 $('title').addEventListener('pointerup', startGame);
-$('again').addEventListener('click', startGame);
+$('again').addEventListener('pointerup', e => { e.preventDefault(); startGame(); });
+
+// ---------- iOS zoom / gesture guards ----------
+const block = e => { if (e.cancelable) e.preventDefault(); };
+for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, block, { passive: false });
+document.addEventListener('dblclick', block, { passive: false });
+const isLink = t => t && t.closest && t.closest('a,#share');
+let lastTouchEnd = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now();
+  if (now - lastTouchEnd < 400 && !isLink(e.target)) block(e);
+  lastTouchEnd = now;
+}, { passive: false });
+document.addEventListener('touchmove', e => { if (e.touches.length > 1 || !e.target.closest('.overlay')) block(e); }, { passive: false });
+for (const el of [renderer.domElement, $('touch'), $('stick'), ...document.querySelectorAll('.tb'), $('hud'), $('map')])
+  for (const ev of ['touchstart', 'touchmove', 'touchend']) el.addEventListener(ev, block, { passive: false });
 
 // ---------- input ----------
 addEventListener('keydown', e => {
@@ -633,6 +648,9 @@ function updateHUD(dt) {
 
 // ---------- resize ----------
 function resize() {
+  const vv = window.visualViewport, vh = vv ? vv.height * (vv.scale || 1) : innerHeight;
+  document.documentElement.style.setProperty('--vh', Math.round(Math.min(vh, innerHeight || vh)) + 'px');
+  if (vv && vv.scale > 1.01) window.scrollTo(0, 0);
   const w = view.clientWidth, h = view.clientHeight;
   renderer.setSize(w, h, false); composer.setSize(w, h);
   bloom.resolution.set(w / 2, h / 2);
@@ -640,7 +658,10 @@ function resize() {
   smokeMat.uniforms.uPx.value = h * renderer.getPixelRatio() / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
   const dpr = Math.min(devicePixelRatio, 2); mini.width = mini.clientWidth * dpr; mini.height = mini.clientHeight * dpr;
 }
-addEventListener('resize', resize); resize();
+addEventListener('resize', resize);
+addEventListener('orientationchange', () => setTimeout(resize, 250));
+if (window.visualViewport) { visualViewport.addEventListener('resize', resize); visualViewport.addEventListener('scroll', () => window.scrollTo(0, 0)); }
+resize();
 
 // ---------- loop ----------
 const camPos = new THREE.Vector3(5, 10, 18), camLook = new THREE.Vector3();
@@ -694,5 +715,6 @@ resetWorld(true);
 if (SHOT === 'air') { $('title').classList.remove('show'); state = 'play'; resetWorld(true); state = 'play'; $('touch').classList.add('on'); combo = 7; comboT = 999; score = 18420; gameT = 90; }
 if (SHOT === 'over') { $('title').classList.remove('show'); resetWorld(true); state = 'play'; attract = false; invuln = false; score = 23870; stats = { near: 31, tricks: 9, maxCombo: 6, air: 74 }; setTimeout(() => gameOver('MID-AIR COLLISION'), 1500); }
 camPos.set(P.x*0.8, P.y+5, P.z+12); camLook.set(P.x, P.y+6, P.z-30);
+window.__forceOver = () => { if (state !== 'play') startGame(); score = 12345; stats.near = 12; gameOver('MID-AIR COLLISION'); };
 window.__zaxis = { get state() { return state; }, get score() { return score; } };
 requestAnimationFrame(frame);
