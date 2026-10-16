@@ -366,7 +366,7 @@ document.addEventListener('touchend', e => {
   lastTouchEnd = now;
 }, { passive: false });
 document.addEventListener('touchmove', e => { if (e.touches.length > 1 || !e.target.closest('.overlay')) block(e); }, { passive: false });
-for (const el of [renderer.domElement, $('touch'), $('stick'), ...document.querySelectorAll('.tb'), $('hud'), $('map')])
+for (const el of [renderer.domElement, $('touch'), $('stick'), ...document.querySelectorAll('.tb'), $('hud')])
   for (const ev of ['touchstart', 'touchmove', 'touchend']) el.addEventListener(ev, block, { passive: false });
 
 // ---------- input ----------
@@ -588,36 +588,6 @@ function updateOrbs(dt) {
   orbMesh.instanceMatrix.needsUpdate = orbRing.instanceMatrix.needsUpdate = true;
 }
 
-// ---------- minimap ----------
-const mini = $('mini'), mctx = mini.getContext('2d');
-function drawMap() {
-  const W = mini.width, H = mini.height, s = Math.max(W / 70, H / 260), cx = W / 2, cy = H * 0.66;
-  mctx.fillStyle = '#8e9298'; mctx.fillRect(0, 0, W, H);
-  const X = x => cx + (x - P.x) * s, Z = z => cy + (z - P.z) * s;
-  mctx.fillStyle = '#7f838a';
-  mctx.fillStyle = '#a3a7ad'; mctx.fillRect(X(-RW), 0, RW * 2 * s, H);
-  const k0 = Math.floor((P.z - H / s) / TILE), k1 = Math.ceil((P.z + H / s) / TILE);
-  for (let k = k0; k <= k1; k++) mctx.fillRect(0, Z(k * TILE - 11), W, 22 * s);
-  mctx.strokeStyle = '#fff'; mctx.lineWidth = Math.max(1.5, s * 0.5);
-  mctx.beginPath(); mctx.moveTo(X(-RW), 0); mctx.lineTo(X(-RW), H); mctx.moveTo(X(RW), 0); mctx.lineTo(X(RW), H);
-  for (let k = k0; k <= k1; k++) { mctx.moveTo(0, Z(k * TILE - 11)); mctx.lineTo(X(-RW), Z(k * TILE - 11)); mctx.moveTo(X(RW), Z(k * TILE - 11)); mctx.lineTo(W, Z(k * TILE - 11));
-    mctx.moveTo(0, Z(k * TILE + 11)); mctx.lineTo(X(-RW), Z(k * TILE + 11)); mctx.moveTo(X(RW), Z(k * TILE + 11)); mctx.lineTo(W, Z(k * TILE + 11)); }
-  mctx.stroke();
-  for (const c of cars) {
-    if (!c.active) continue;
-    const a = c.ground ? 0.55 : clamp(1 - Math.abs(c.pos.y - P.y) / 20, 0.25, 1);
-    mctx.fillStyle = c.ground ? `rgba(40,44,52,${a})` : `rgba(255,255,255,${a})`;
-    mctx.beginPath(); mctx.arc(X(c.pos.x), Z(c.pos.z), c.ground ? s * 0.9 : s * 1.1, 0, 7); mctx.fill();
-  }
-  mctx.fillStyle = '#5fd0ff';
-  for (const o of orbs) { mctx.beginPath(); mctx.arc(X(o.pos.x), Z(o.pos.z), s * 0.9, 0, 7); mctx.fill(); }
-  mctx.save(); mctx.translate(cx, cy); mctx.rotate(P.vx * 0.02);
-  const a = Math.max(8, W * 0.07);
-  mctx.fillStyle = '#3e6ae1'; mctx.strokeStyle = '#fff'; mctx.lineWidth = 2;
-  mctx.beginPath(); mctx.moveTo(0, -a); mctx.lineTo(a * 0.75, a * 0.8); mctx.lineTo(0, a * 0.35); mctx.lineTo(-a * 0.75, a * 0.8); mctx.closePath(); mctx.fill(); mctx.stroke();
-  mctx.restore();
-}
-
 // ---------- HUD ----------
 let hudCache = {};
 function setText(k, el, v) { if (hudCache[k] !== v) { hudCache[k] = v; el.textContent = v; } }
@@ -656,7 +626,6 @@ function resize() {
   bloom.resolution.set(w / 2, h / 2);
   camera.aspect = w / h; camera.fov = w / h < 0.8 ? 72 : 58; camera.updateProjectionMatrix();
   smokeMat.uniforms.uPx.value = h * renderer.getPixelRatio() / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
-  const dpr = Math.min(devicePixelRatio, 2); mini.width = mini.clientWidth * dpr; mini.height = mini.clientHeight * dpr;
 }
 addEventListener('resize', resize);
 addEventListener('orientationchange', () => setTimeout(resize, 250));
@@ -704,7 +673,7 @@ function frame(now) { FR++;
     hissG.gain.setTargetAtTime(playing ? (P.thrusting ? 0.22 : P.air ? 0.04 : 0) + (input.boost && P.air ? 0.12 : 0) : 0, t, 0.05);
     whine.frequency.setTargetAtTime(60 + P.speed * 5, t, 0.1); whineG.gain.setTargetAtTime(playing ? 0.025 : 0, t, 0.2);
   }
-  updateHUD(dt); drawMap();
+  updateHUD(dt);
   composer.render();
   // adaptive quality
   fpsAcc += dt; fpsN++;
