@@ -38,6 +38,8 @@ canvas,#stick,#knob,.tb,#touch,#hud,.overlay{touch-action:none;-webkit-touch-cal
 #limit.over{animation:flash .5s infinite alternate}
 #limit.z{background:#0e1622;color:#8fd0ff;border-color:#8fd0ff;outline-color:#2a4a66}
 @keyframes flash{to{background:#ffd5d5}}
+#speedfx{position:absolute;inset:0;pointer-events:none;opacity:0;background:repeating-conic-gradient(from 0deg at 50% 42%,#ffffff00 0deg 3.2deg,#cfe9ff55 3.4deg 3.8deg,#ffffff00 4deg 7deg);-webkit-mask-image:radial-gradient(ellipse at 50% 42%,transparent 32%,#000 78%);mask-image:radial-gradient(ellipse at 50% 42%,transparent 32%,#000 78%);animation:sfx .12s steps(2) infinite}
+@keyframes sfx{50%{transform:rotate(1.5deg) scale(1.03)}}
 #pops{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .pop{position:absolute;left:50%;top:34%;transform:translate(-50%,0);font-weight:800;font-size:22px;letter-spacing:.08em;white-space:nowrap;
  color:#fff;text-shadow:0 0 14px #6cf,0 2px 4px #000a;animation:pop 1.1s ease-out forwards}
@@ -80,6 +82,8 @@ body.touch #touch.on{display:block}
 .tb.small{width:58px;height:46px;border-radius:24px}
 .tb.big{width:92px;height:92px;border-color:#8fd0ff;background:#8fd0ff30;font-size:13px}
 .tb.down{background:#8fd0ffa0;color:#06121f}
+#bBoost.down{background:#ffb347c0;border-color:#ffd18a;box-shadow:0 0 18px #ffb347}
+#bBoost.empty{opacity:.45}
 @media (max-width:520px){#spd{font-size:34px}#spdlbl{font-size:12px}#limit{width:46px;height:60px}#limit b{font-size:22px}#limit small{font-size:8px}
  #left{top:66px;left:10px;gap:14px}#hold svg{width:38px;height:32px}.icon{font-size:11px}#autoA svg{width:32px;height:22px}#gasbar{height:80px}
  #hud{padding-left:10px;padding-right:10px}#speedcluster{right:10px}#prnd{font-size:16px;gap:6px}.pop{font-size:17px}.pop.big{font-size:22px}#stats b{font-size:18px}}
