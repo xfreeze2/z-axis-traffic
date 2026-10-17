@@ -15,7 +15,7 @@ The speed limit is 35. On the ground you get a ticket for going over it. There i
 |---|---|---|
 | Steer / throttle | WASD / arrow keys | Virtual joystick |
 | Thrust (lift off) | Space | THRUST |
-| Boost (air) | Shift | BOOST |
+| Boost (surge, burns cold gas) | Shift | BOOST |
 | Barrel roll | Q / E | ROLL |
 | Kickflip | F | FLIP |
 

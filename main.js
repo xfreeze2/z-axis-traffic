@@ -222,6 +222,9 @@ let score = 0, combo = 0, comboT = 0, best = +(localStorage.getItem('zaxis-best'
 let stats = { near: 0, tricks: 0, maxCombo: 0, air: 0 };
 let gameT = 0, shake = 0, overT = 0, ticketCD = 0, speedOverT = 0, saidNoLimit = false, lastLandZ = 0, invuln = false;
 const input = { steer: 0, throttle: 0, thrust: false, boost: false };
+// boost: works on the ground AND in the air, burns cold gas; empty tank locks it until released and refilled a bit
+const BOOST_MULT = 1.8, BOOST_DRAIN = 24, BOOST_MIN_GAS = 15;
+let boosting = false, boostLock = false, boostAmt = 0;
 const keys = {};
 
 function mult() { return 1 + Math.min(9, Math.floor(combo / 2)); }
@@ -257,7 +260,7 @@ function resetWorld(att) {
   attract = att; T = T; gameT = att ? 60 : 0;
   Object.assign(P, { x: 5.4, y: att ? 14 : 0, z: 0, vx: 0, vy: 0, speed: att ? 26 : 10, gas: 100, roll: 0, flip: 0, rollV: 0, flipV: 0, bank: 0, air: att, airT: 0, dead: false, deadT: 0 });
   score = 0; combo = 0; comboT = 0; stats = { near: 0, tricks: 0, maxCombo: 0, air: 0 };
-  speedOverT = 0; ticketCD = 4; saidNoLimit = false; invuln = att;
+  speedOverT = 0; ticketCD = 4; saidNoLimit = false; invuln = att; boosting = false; boostLock = false; boostAmt = 0;
   cars.forEach(deactivate);
   for (let i = 0; i < 16; i++) { const c = freeCar(); spawnGround(c, -20 - i * 13 + rand(-4, 4)); }
   for (let i = 0; i < (att ? 46 : 14); i++) spawnFlyer(freeCar(), true);
@@ -380,7 +383,7 @@ addEventListener('keydown', e => {
   }
 });
 addEventListener('keyup', e => keys[e.code] = false);
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; btn.thrust = btn.boost = false; });
 const stick = { id: null, x: 0, y: 0 }, sEl = $('stick'), knob = $('knob');
 function stickMove(e) {
   const r = sEl.getBoundingClientRect(), R = r.width / 2;
@@ -396,9 +399,14 @@ const btn = { thrust: false, boost: false };
 function holdBtn(el, k) {
   el.addEventListener('pointerdown', e => { e.preventDefault(); btn[k] = true; el.classList.add('down'); el.setPointerCapture(e.pointerId); initAudio(); });
   const up = () => { btn[k] = false; el.classList.remove('down'); };
-  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
+  // touch fallback (iOS): the zoom guard preventDefaults touches on .tb, so drive the button from touch events too
+  el.addEventListener('touchstart', () => { btn[k] = true; el.classList.add('down'); }, { passive: true });
+  const tEnd = e => { if (!e.targetTouches || e.targetTouches.length === 0) up(); };
+  el.addEventListener('touchend', tEnd, { passive: true }); el.addEventListener('touchcancel', tEnd, { passive: true });
 }
 holdBtn($('bThrust'), 'thrust'); holdBtn($('bBoost'), 'boost');
+const bBoostEl = $('bBoost'), speedFx = $('speedfx');
 $('bRoll').addEventListener('pointerdown', e => { e.preventDefault(); trick('roll', stick.x < 0 ? -1 : 1); });
 $('bFlip').addEventListener('pointerdown', e => { e.preventDefault(); trick('flip', 1); });
 addEventListener('contextmenu', e => e.preventDefault());
@@ -440,10 +448,21 @@ function updatePlayer(dt) {
     return;
   }
   const air = P.air;
-  const maxV = air ? (input.boost && P.gas > 0 ? 52 : 34) : 22;
+  const maxV = air ? 34 : 22;
   const target = air ? lerp(24, maxV, 0.5 + input.throttle * 0.5) : lerp(4, maxV, 0.45 + input.throttle * 0.55);
-  P.speed = lerp(P.speed, input.boost && P.gas > 0 && air ? 52 : target, dt * (input.throttle < 0 ? 2.5 : 1.2));
-  if (input.boost && P.gas > 0 && air) { P.gas -= 26 * dt; shake = Math.max(shake, 0.12); }
+  // boost: previously only applied when airborne, so BOOST on the ground (where every run starts) did nothing
+  if (!input.boost) boostLock = false;
+  const wasBoosting = boosting;
+  boosting = input.boost && !boostLock && P.gas > (wasBoosting ? 0 : BOOST_MIN_GAS);
+  if (input.boost && !boosting && wasBoosting) boostLock = true; // tank ran dry: release to re-arm
+  if (boosting && !wasBoosting) { P.speed = Math.max(P.speed, maxV * 0.9) + 6; sfx.whoosh(); } // instant kick
+  boostAmt = lerp(boostAmt, boosting ? 1 : 0, Math.min(1, dt * (boosting ? 6 : 2.5)));
+  if (boosting) {
+    P.speed = lerp(P.speed, maxV * BOOST_MULT, Math.min(1, dt * 3.5));
+    P.gas -= BOOST_DRAIN * dt; shake = Math.max(shake, 0.18);
+  } else {
+    P.speed = lerp(P.speed, target, dt * (input.throttle < 0 || P.speed > maxV + 1 ? 2.5 : 1.2));
+  }
   P.vx = lerp(P.vx, input.steer * (air ? 15 : 9), dt * 5);
   P.x += P.vx * dt;
   if (!air) P.x = clamp(P.x, -RW + 1, RW - 1); else P.x = clamp(P.x, -45, 45);
@@ -457,7 +476,7 @@ function updatePlayer(dt) {
     P.y += P.vy * dt; if (P.y > 44) { P.y = 44; P.vy = Math.min(P.vy, 0); }
     P.airT += dt; stats.air += attract ? 0 : dt;
     if (P.y <= 0) land();
-  } else {
+  } else if (!boosting) {
     P.gas = Math.min(100, P.gas + 14 * dt);
   }
   P.gas = Math.max(0, P.gas);
@@ -556,7 +575,7 @@ function updateCars(dt) {
     player.updateMatrix();
     const jl = MODELS[2].jets, pow = P.thrusting ? 1 : 0.45;
     for (let j = 0; j < 4; j++) {
-      const len = (2.6 + Math.random()) * pow * (input.boost && P.air && P.gas > 0 ? 1.4 : 1);
+      const len = (2.6 + Math.random()) * pow * (1 + 0.5 * boostAmt);
       jo.makeTranslation(jl[j][0], 0.2, jl[j][1]); js.makeScale(1.1, len, 1.1);
       jm.multiplyMatrices(player.matrix, jo).multiply(js); jets.setMatrixAt(JETS - 4 + j, jm);
       if (P.thrusting && Math.random() < 0.7) {
@@ -656,21 +675,23 @@ function frame(now) { FR++;
   ground.position.set(P.x, 0, P.z);
   // camera (FSD-style high chase)
   const portrait = camera.aspect < 0.8;
-  const back = portrait ? 19 : 12, up = (portrait ? 8 : 5.5) - (P.air ? 2 : 0);
+  const back = (portrait ? 19 : 12) + boostAmt * 3, up = (portrait ? 8 : 5.5) - (P.air ? 2 : 0);
   camPos.lerp(v3.set(P.x * 0.8, P.y + up + (P.air ? 1.5 : 0), P.z + back), Math.min(1, dt * 4));
   camLook.lerp(v3b.set(P.x * 0.85, P.y + (P.air ? 6.5 : 3.5), P.z - 30), Math.min(1, dt * 5));
   camera.position.copy(camPos);
   shake = Math.max(0, shake - dt * 1.6);
   if (shake > 0) camera.position.add(v3.set(rand(-1, 1), rand(-1, 1), 0).multiplyScalar(shake * 0.5));
   camera.lookAt(camLook);
-  if (P.air && input.boost && P.gas > 0) camera.fov = lerp(camera.fov, (portrait ? 72 : 58) + 8, dt * 3); else camera.fov = lerp(camera.fov, portrait ? 72 : 58, dt * 3);
+  camera.fov = lerp(camera.fov, (portrait ? 72 : 58) + 16 * boostAmt, Math.min(1, dt * 6));
+  speedFx.style.opacity = (boostAmt * (state === 'play' ? 1 : 0)).toFixed(2);
+  bBoostEl.classList.toggle('empty', state === 'play' && (boostLock || (!boosting && P.gas <= BOOST_MIN_GAS)));
   camera.updateProjectionMatrix();
   smokeMat.uniforms.uTime.value = T;
   if (sDirty) { aPos.needsUpdate = aVel.needsUpdate = aBirth.needsUpdate = aSize.needsUpdate = true; sDirty = false; }
   // audio
   if (AC && hissG) {
     const t = AC.currentTime, playing = state === 'play';
-    hissG.gain.setTargetAtTime(playing ? (P.thrusting ? 0.22 : P.air ? 0.04 : 0) + (input.boost && P.air ? 0.12 : 0) : 0, t, 0.05);
+    hissG.gain.setTargetAtTime(playing ? (P.thrusting ? 0.22 : P.air ? 0.04 : 0) + (boosting ? 0.14 : 0) : 0, t, 0.05);
     whine.frequency.setTargetAtTime(60 + P.speed * 5, t, 0.1); whineG.gain.setTargetAtTime(playing ? 0.025 : 0, t, 0.2);
   }
   updateHUD(dt);
@@ -685,5 +706,5 @@ if (SHOT === 'air') { $('title').classList.remove('show'); state = 'play'; reset
 if (SHOT === 'over') { $('title').classList.remove('show'); resetWorld(true); state = 'play'; attract = false; invuln = false; score = 23870; stats = { near: 31, tricks: 9, maxCombo: 6, air: 74 }; setTimeout(() => gameOver('MID-AIR COLLISION'), 1500); }
 camPos.set(P.x*0.8, P.y+5, P.z+12); camLook.set(P.x, P.y+6, P.z-30);
 window.__forceOver = () => { if (state !== 'play') startGame(); score = 12345; stats.near = 12; gameOver('MID-AIR COLLISION'); };
-window.__zaxis = { get state() { return state; }, get score() { return score; } };
+window.__zaxis = { get state() { return state; }, get score() { return score; }, get speed() { return P.speed; }, get air() { return P.air; }, get gas() { return P.gas; }, get fov() { return camera.fov; }, get boosting() { return boosting; }, god(v) { invuln = !!v; } };
 requestAnimationFrame(frame);
